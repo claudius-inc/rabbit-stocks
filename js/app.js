@@ -243,8 +243,32 @@ const App = {
   },
 
   handleSideClick() {
-    if (this.currentView !== 'home') {
-      this.showView('home');
+    // Try to lock screen via R1 API
+    this.lockScreen();
+  },
+  
+  /**
+   * Lock screen and stop fetching
+   */
+  lockScreen() {
+    // Stop auto-refresh before locking
+    this.stopAutoRefresh();
+    
+    // Try various R1 lock APIs
+    try {
+      if (window.r1 && window.r1.lock) {
+        window.r1.lock();
+      } else if (window.rabbit && window.rabbit.lockScreen) {
+        window.rabbit.lockScreen();
+      } else if (window.creationStorage && window.creationStorage.lockScreen) {
+        window.creationStorage.lockScreen();
+      } else {
+        // Fallback: dispatch custom event R1 might listen to
+        window.dispatchEvent(new CustomEvent('requestLock'));
+        console.log('Lock requested (no native API found)');
+      }
+    } catch (e) {
+      console.log('Lock screen failed:', e);
     }
   },
 
