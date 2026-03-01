@@ -229,13 +229,13 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0;
   background: none;
   border: none;
   cursor: pointer;
   color: #888;
-  padding: 0;
+  padding: 4px 0 0 0;
 }
 
 .nav-btn:active {
