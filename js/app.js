@@ -1,31 +1,59 @@
 /**
- * Main Application Logic
+ * Stocks App - Main Application
+ * For Rabbit R1 (240x282 screen)
  */
 
 const App = {
   watchlist: [],
   quotes: {},
-  filter: 'all',
-  layout: 'compact', // compact, cards, ticker, dashboard, focus
-  selectedItem: null,
-  currentIndex: 0, // For card/focus navigation
+  currentView: 'home',
+  
+  // Storage keys
+  WATCHLIST_KEY: 'r1stocks_watchlist_v2',
 
   /**
-   * Initialize the app
+   * Initialize
    */
   async init() {
-    console.log('Initializing Stocks app...');
+    console.log('Initializing app...');
     
+    // Insert icons
+    this.insertIcons();
+    
+    // Load data
     await this.loadWatchlist();
-    await this.loadLayout();
+    
+    // Setup
     this.setupEventListeners();
     this.setupHardwareEvents();
-    this.setupWakeEvent();
     
-    this.renderList();
+    // Initial render
+    this.showView('home');
     await this.refreshData();
     
-    console.log('App initialized with', this.watchlist.length, 'items');
+    console.log('Initialized with', this.watchlist.length, 'items');
+  },
+
+  /**
+   * Insert SVG icons into DOM
+   */
+  insertIcons() {
+    document.getElementById('nav-icon-home').innerHTML = Icons.home;
+    document.getElementById('nav-icon-add').innerHTML = Icons.plus;
+    document.getElementById('nav-icon-refresh').innerHTML = Icons.refresh;
+    document.getElementById('nav-icon-settings').innerHTML = Icons.settings;
+    
+    // Back buttons
+    document.getElementById('add-back-btn').innerHTML = Icons.back;
+    document.getElementById('detail-back-btn').innerHTML = Icons.back;
+    document.getElementById('settings-back-btn').innerHTML = Icons.back;
+    
+    // Search button
+    document.querySelector('.search-icon').innerHTML = Icons.search;
+    
+    // Dialog buttons
+    document.getElementById('confirm-yes').innerHTML = Icons.check + ' Yes';
+    document.getElementById('confirm-no').innerHTML = Icons.x + ' No';
   },
 
   /**
@@ -33,16 +61,33 @@ const App = {
    */
   async loadWatchlist() {
     try {
+      // Try R1 creation storage first
       if (typeof window.creationStorage !== 'undefined') {
-        const stored = await window.creationStorage.plain.getItem(STORAGE_KEY);
+        const stored = await window.creationStorage.plain.getItem(this.WATCHLIST_KEY);
         if (stored) {
           this.watchlist = JSON.parse(atob(stored));
+          console.log('Loaded from creationStorage:', this.watchlist.length);
           return;
         }
       }
     } catch (e) {
-      console.log('No saved watchlist, using defaults');
+      console.log('creationStorage not available');
     }
+    
+    // Try localStorage as fallback
+    try {
+      const stored = localStorage.getItem(this.WATCHLIST_KEY);
+      if (stored) {
+        this.watchlist = JSON.parse(stored);
+        console.log('Loaded from localStorage:', this.watchlist.length);
+        return;
+      }
+    } catch (e) {
+      console.log('localStorage not available');
+    }
+    
+    // Use defaults
+    console.log('Using default watchlist');
     this.watchlist = [...DEFAULT_INDICES];
     await this.saveWatchlist();
   },
@@ -51,107 +96,48 @@ const App = {
    * Save watchlist to storage
    */
   async saveWatchlist() {
+    // Try R1 creation storage
     try {
       if (typeof window.creationStorage !== 'undefined') {
         await window.creationStorage.plain.setItem(
-          STORAGE_KEY,
+          this.WATCHLIST_KEY,
           btoa(JSON.stringify(this.watchlist))
         );
+        console.log('Saved to creationStorage');
       }
     } catch (e) {
-      console.error('Failed to save watchlist:', e);
+      console.log('creationStorage save failed');
     }
-  },
-
-  /**
-   * Load layout preference
-   */
-  async loadLayout() {
+    
+    // Also save to localStorage as backup
     try {
-      if (typeof window.creationStorage !== 'undefined') {
-        const layout = await window.creationStorage.plain.getItem('stocks_layout');
-        if (layout) {
-          this.layout = atob(layout);
-          this.updateLayoutMenu();
-        }
-      }
+      localStorage.setItem(this.WATCHLIST_KEY, JSON.stringify(this.watchlist));
+      console.log('Saved to localStorage');
     } catch (e) {}
   },
 
   /**
-   * Save layout preference
-   */
-  async saveLayout() {
-    try {
-      if (typeof window.creationStorage !== 'undefined') {
-        await window.creationStorage.plain.setItem('stocks_layout', btoa(this.layout));
-      }
-    } catch (e) {}
-  },
-
-  /**
-   * Set up DOM event listeners
+   * Setup event listeners
    */
   setupEventListeners() {
-    // Menu
-    document.getElementById('menu-btn').addEventListener('click', () => this.toggleMenu());
-    document.getElementById('menu-overlay').addEventListener('click', () => this.closeMenu());
-
-    // Menu items
-    document.querySelectorAll('.menu-item').forEach(item => {
-      item.addEventListener('click', () => this.handleMenuAction(item.dataset.action));
+    // Bottom nav
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const view = btn.dataset.view;
+        const action = btn.dataset.action;
+        
+        if (action === 'refresh') {
+          this.refreshData();
+        } else if (view) {
+          this.showView(view);
+        }
+      });
     });
-
-    // Layout options
-    document.querySelectorAll('.layout-option').forEach(btn => {
-      btn.addEventListener('click', () => this.setLayout(btn.dataset.layout));
-    });
-
-    // Action bar
-    document.getElementById('refresh-btn').addEventListener('click', () => this.refreshData());
-    document.getElementById('add-btn').addEventListener('click', () => this.showAddView());
 
     // Back buttons
-    document.getElementById('back-btn').addEventListener('click', () => this.showListView());
-    document.getElementById('add-back-btn').addEventListener('click', () => this.showListView());
-
-    // Stock list clicks (delegated)
-    document.getElementById('stock-list').addEventListener('click', (e) => {
-      // Card navigation
-      const navBtn = e.target.closest('.card-nav-btn');
-      if (navBtn && !navBtn.disabled) {
-        const dir = parseInt(navBtn.dataset.dir);
-        this.navigateCards(dir);
-        return;
-      }
-      
-      // Mover item click
-      const mover = e.target.closest('.mover-item');
-      if (mover) {
-        this.showDetail(mover.dataset.symbol);
-        return;
-      }
-      
-      // Tile click
-      const tile = e.target.closest('.dash-tile');
-      if (tile) {
-        this.showDetail(tile.dataset.symbol);
-        return;
-      }
-      
-      // Regular item click
-      const item = e.target.closest('.stock-item, .card-view, .focus-view');
-      if (item) {
-        this.showDetail(item.dataset.symbol);
-      }
-    });
-
-    // Detail view delete
-    document.getElementById('detail-content').addEventListener('click', (e) => {
-      if (e.target.classList.contains('delete-btn')) {
-        this.removeItem(e.target.dataset.symbol);
-      }
-    });
+    document.getElementById('add-back-btn').addEventListener('click', () => this.showView('home'));
+    document.getElementById('detail-back-btn').addEventListener('click', () => this.showView('home'));
+    document.getElementById('settings-back-btn').addEventListener('click', () => this.showView('home'));
 
     // Search
     document.getElementById('search-btn').addEventListener('click', () => this.handleSearch());
@@ -159,56 +145,46 @@ const App = {
       if (e.key === 'Enter') this.handleSearch();
     });
 
-    // Search results
+    // Search results (delegated)
     document.getElementById('search-results').addEventListener('click', (e) => {
-      const item = e.target.closest('.search-result-item');
-      if (item && !item.classList.contains('disabled')) {
-        this.addItem({
+      const item = e.target.closest('.search-result');
+      if (item && !item.classList.contains('added')) {
+        this.addToWatchlist({
           symbol: item.dataset.symbol,
           name: item.dataset.name,
           type: item.dataset.type
         });
       }
     });
-  },
 
-  /**
-   * Set up R1 hardware events
-   */
-  setupHardwareEvents() {
-    window.addEventListener('scrollUp', () => {
-      if (this.layout === 'cards' || this.layout === 'focus') {
-        this.navigateCards(-1);
-      } else {
-        this.navigateList(-1);
+    // Watchlist manage (delegated)
+    document.getElementById('watchlist-manage').addEventListener('click', (e) => {
+      const removeBtn = e.target.closest('.remove-btn');
+      if (removeBtn) {
+        this.removeFromWatchlist(removeBtn.dataset.symbol);
       }
     });
 
-    window.addEventListener('scrollDown', () => {
-      if (this.layout === 'cards' || this.layout === 'focus') {
-        this.navigateCards(1);
-      } else {
-        this.navigateList(1);
+    // Stock list clicks (delegated)
+    document.getElementById('stocks-list').addEventListener('click', (e) => {
+      const item = e.target.closest('.stock-item');
+      if (item) {
+        this.showDetail(item.dataset.symbol);
       }
     });
 
-    window.addEventListener('sideClick', () => {
-      const currentView = document.querySelector('.view.active').id;
-      if (currentView === 'list-view') {
-        const items = this.getFilteredItems();
-        if (items[this.currentIndex]) {
-          this.showDetail(items[this.currentIndex].symbol);
-        }
-      } else if (currentView === 'detail-view') {
-        this.showListView();
+    // Ticker clicks (delegated)
+    document.getElementById('ticker-track').addEventListener('click', (e) => {
+      const item = e.target.closest('.ticker-item');
+      if (item) {
+        this.showDetail(item.dataset.symbol);
       }
     });
-  },
 
-  /**
-   * Set up wake event
-   */
-  setupWakeEvent() {
+    // Settings
+    document.getElementById('reset-btn').addEventListener('click', () => this.resetToDefaults());
+
+    // Wake event
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         this.refreshData();
@@ -217,151 +193,161 @@ const App = {
   },
 
   /**
-   * Navigate list (compact layout)
+   * Setup R1 hardware events
    */
-  navigateList(direction) {
-    const items = document.querySelectorAll('.stock-item.compact');
-    if (items.length === 0) return;
+  setupHardwareEvents() {
+    window.addEventListener('scrollUp', () => this.handleScroll(-1));
+    window.addEventListener('scrollDown', () => this.handleScroll(1));
+    window.addEventListener('sideClick', () => this.handleSideClick());
+  },
 
-    items.forEach(i => i.classList.remove('selected'));
-    
-    this.currentIndex += direction;
-    if (this.currentIndex < 0) this.currentIndex = 0;
-    if (this.currentIndex >= items.length) this.currentIndex = items.length - 1;
+  handleScroll(dir) {
+    const stocksList = document.getElementById('stocks-list');
+    if (stocksList && this.currentView === 'home') {
+      stocksList.scrollBy({ top: dir * 50, behavior: 'smooth' });
+    }
+  },
 
-    const selected = items[this.currentIndex];
-    selected.classList.add('selected');
-    selected.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  handleSideClick() {
+    if (this.currentView !== 'home') {
+      this.showView('home');
+    }
   },
 
   /**
-   * Navigate cards/focus
+   * Show view
    */
-  navigateCards(direction) {
-    const items = this.getFilteredItems();
-    this.currentIndex += direction;
-    if (this.currentIndex < 0) this.currentIndex = 0;
-    if (this.currentIndex >= items.length) this.currentIndex = items.length - 1;
-    this.renderList();
+  showView(viewId) {
+    this.currentView = viewId;
+    
+    // Hide all views
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    
+    // Show target view
+    const view = document.getElementById(viewId + '-view');
+    if (view) {
+      view.classList.add('active');
+    }
+    
+    // Update nav buttons
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.view === viewId);
+    });
+    
+    // View-specific setup
+    if (viewId === 'home') {
+      this.renderHome();
+    } else if (viewId === 'add') {
+      this.renderWatchlistManage();
+      document.getElementById('search-input').value = '';
+      document.getElementById('search-results').innerHTML = '';
+    }
   },
 
   /**
    * Refresh data
    */
   async refreshData() {
-    Views.setLoading(true);
+    this.showLoading(true);
     
     try {
       const symbols = this.watchlist.map(i => i.symbol);
-      this.quotes = await StockAPI.fetchQuotes(symbols);
-      this.renderList();
+      if (symbols.length > 0) {
+        this.quotes = await StockAPI.fetchQuotes(symbols);
+      }
+      this.renderHome();
     } catch (e) {
       console.error('Refresh failed:', e);
     }
     
-    Views.setLoading(false);
+    this.showLoading(false);
   },
 
   /**
-   * Get filtered items
+   * Render home view (ticker + stocks)
    */
-  getFilteredItems() {
-    let items = this.watchlist;
-    if (this.filter === 'indices') {
-      items = items.filter(i => i.type === 'index');
-    } else if (this.filter === 'stocks') {
-      items = items.filter(i => i.type === 'stock');
-    }
-    return items;
-  },
-
-  /**
-   * Render list with current layout
-   */
-  renderList() {
-    const container = document.getElementById('stock-list');
-    const items = this.getFilteredItems();
+  renderHome() {
+    const indices = this.watchlist.filter(i => i.type === 'index');
+    const stocks = this.watchlist.filter(i => i.type !== 'index');
     
-    if (items.length === 0) {
-      container.innerHTML = Layouts.renderEmpty();
+    // Render ticker
+    this.renderTicker(indices);
+    
+    // Render stocks list
+    this.renderStocksList(stocks);
+  },
+
+  /**
+   * Render indices ticker
+   */
+  renderTicker(indices) {
+    const track = document.getElementById('ticker-track');
+    
+    if (indices.length === 0) {
+      track.innerHTML = '<span class="ticker-item"><span class="ticker-symbol">No indices</span></span>';
       return;
     }
+    
+    const items = indices.map(item => {
+      const q = this.quotes[item.symbol] || {};
+      const changeClass = this.getChangeClass(q.changePercent);
+      const arrow = q.changePercent > 0 ? Icons.trendingUp : 
+                    q.changePercent < 0 ? Icons.trendingDown : '';
+      
+      return `
+        <div class="ticker-item" data-symbol="${item.symbol}">
+          <span class="ticker-symbol">${this.formatSymbol(item.symbol)}</span>
+          <span class="ticker-price">${q.price ? formatNumber(q.price, 0) : '...'}</span>
+          <span class="ticker-change ${changeClass}">
+            ${arrow}
+            ${q.changePercent !== undefined ? (q.changePercent >= 0 ? '+' : '') + q.changePercent.toFixed(1) + '%' : ''}
+          </span>
+        </div>
+      `;
+    }).join('');
+    
+    // Duplicate for seamless scroll
+    track.innerHTML = items + items;
+  },
 
-    // Ensure currentIndex is valid
-    if (this.currentIndex >= items.length) {
-      this.currentIndex = items.length - 1;
+  /**
+   * Render stocks list
+   */
+  renderStocksList(stocks) {
+    const container = document.getElementById('stocks-list');
+    
+    if (stocks.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">${Icons.plus}</div>
+          <div class="empty-text">No stocks yet. Tap Add to start.</div>
+        </div>
+      `;
+      return;
     }
-
-    switch (this.layout) {
-      case 'compact':
-        container.innerHTML = Layouts.renderCompact(items, this.quotes);
-        break;
-      case 'cards':
-        container.innerHTML = Layouts.renderCards(items, this.quotes, this.currentIndex);
-        break;
-      case 'ticker':
-        container.innerHTML = Layouts.renderTicker(items, this.quotes);
-        break;
-      case 'dashboard':
-        container.innerHTML = Layouts.renderDashboard(items, this.quotes);
-        break;
-      case 'focus':
-        container.innerHTML = Layouts.renderFocus(items, this.quotes, this.currentIndex);
-        break;
-      default:
-        container.innerHTML = Layouts.renderCompact(items, this.quotes);
-    }
-  },
-
-  /**
-   * Set layout
-   */
-  setLayout(layout) {
-    this.layout = layout;
-    this.currentIndex = 0;
-    this.updateLayoutMenu();
-    this.renderList();
-    this.saveLayout();
-    this.closeMenu();
-  },
-
-  /**
-   * Update layout menu active state
-   */
-  updateLayoutMenu() {
-    document.querySelectorAll('.layout-option').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.layout === this.layout);
-    });
-  },
-
-  /**
-   * Show list view
-   */
-  showListView() {
-    Views.showView('list-view', 'My Stocks');
-    this.renderList();
-  },
-
-  /**
-   * Show detail view
-   */
-  showDetail(symbol) {
-    const item = this.watchlist.find(i => i.symbol === symbol);
-    if (!item) return;
-
-    this.selectedItem = item;
-    Views.renderDetail(item, this.quotes[symbol]);
-    Views.showView('detail-view', item.name);
-  },
-
-  /**
-   * Show add view
-   */
-  showAddView() {
-    document.getElementById('search-input').value = '';
-    document.getElementById('search-results').innerHTML = '';
-    Views.showView('add-view', 'Add Stock');
-    document.getElementById('search-input').focus();
+    
+    container.innerHTML = stocks.map(item => {
+      const q = this.quotes[item.symbol] || {};
+      const changeClass = this.getChangeClass(q.changePercent);
+      const arrow = q.changePercent > 0 ? Icons.trendingUp : 
+                    q.changePercent < 0 ? Icons.trendingDown : '';
+      
+      return `
+        <div class="stock-item" data-symbol="${item.symbol}">
+          <div class="stock-left">
+            <span class="stock-symbol">${this.formatSymbol(item.symbol)}</span>
+            <span class="stock-name">${item.name}</span>
+          </div>
+          <div class="stock-right">
+            <div class="stock-price">${q.price ? formatNumber(q.price) : '...'}</div>
+            <div class="stock-change ${changeClass}">
+              ${arrow}
+              ${q.changePercent !== undefined ? formatPercent(q.changePercent) : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
   },
 
   /**
@@ -370,123 +356,215 @@ const App = {
   async handleSearch() {
     const query = document.getElementById('search-input').value.trim();
     if (!query) return;
-
-    Views.setLoading(true);
+    
+    this.showLoading(true);
     
     try {
       const results = await StockAPI.search(query);
-      const existing = this.watchlist.map(i => i.symbol);
-      Views.renderSearchResults(results, existing);
+      this.renderSearchResults(results);
     } catch (e) {
       console.error('Search failed:', e);
     }
     
-    Views.setLoading(false);
+    this.showLoading(false);
   },
 
   /**
-   * Add item
+   * Render search results
    */
-  async addItem(item) {
-    if (this.watchlist.find(i => i.symbol === item.symbol)) return;
+  renderSearchResults(results) {
+    const container = document.getElementById('search-results');
+    const existingSymbols = this.watchlist.map(i => i.symbol);
+    
+    if (results.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-text">No results found</div></div>';
+      return;
+    }
+    
+    container.innerHTML = results.map(item => {
+      const added = existingSymbols.includes(item.symbol);
+      return `
+        <div class="search-result ${added ? 'added' : ''}" 
+             data-symbol="${item.symbol}" 
+             data-name="${item.name}"
+             data-type="${item.type}">
+          <div class="result-info">
+            <div class="result-symbol">${item.symbol}</div>
+            <div class="result-name">${item.name}</div>
+          </div>
+          <div class="result-action ${added ? 'added' : ''}">
+            ${added ? Icons.check : Icons.plus}
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
 
+  /**
+   * Render watchlist manage
+   */
+  renderWatchlistManage() {
+    const container = document.getElementById('watchlist-manage');
+    
+    container.innerHTML = this.watchlist.map(item => `
+      <div class="watchlist-item">
+        <div class="watchlist-item-info">
+          <span class="watchlist-symbol">${this.formatSymbol(item.symbol)}</span>
+          <span class="watchlist-name">${item.name}</span>
+        </div>
+        <button class="remove-btn" data-symbol="${item.symbol}">
+          ${Icons.x}
+        </button>
+      </div>
+    `).join('');
+  },
+
+  /**
+   * Add to watchlist
+   */
+  async addToWatchlist(item) {
+    if (this.watchlist.find(i => i.symbol === item.symbol)) return;
+    
     this.watchlist.push(item);
     await this.saveWatchlist();
     
-    Views.setLoading(true);
+    // Fetch quote for new item
     const quote = await StockAPI.fetchQuote(item.symbol);
     if (quote) this.quotes[item.symbol] = quote;
-    Views.setLoading(false);
     
-    this.showListView();
+    // Re-render
+    this.renderSearchResults(await StockAPI.search(document.getElementById('search-input').value));
+    this.renderWatchlistManage();
   },
 
   /**
-   * Remove item
+   * Remove from watchlist
    */
-  async removeItem(symbol) {
-    const confirmed = await Views.showConfirm('Remove from list?');
-    if (!confirmed) return;
-
+  async removeFromWatchlist(symbol) {
     this.watchlist = this.watchlist.filter(i => i.symbol !== symbol);
     delete this.quotes[symbol];
     await this.saveWatchlist();
-    
-    this.showListView();
+    this.renderWatchlistManage();
   },
 
   /**
-   * Toggle menu
+   * Show detail
    */
-  toggleMenu() {
-    const drawer = document.getElementById('menu-drawer');
-    const overlay = document.getElementById('menu-overlay');
+  showDetail(symbol) {
+    const item = this.watchlist.find(i => i.symbol === symbol);
+    if (!item) return;
     
-    if (drawer.classList.contains('hidden')) {
-      drawer.classList.remove('hidden');
-      overlay.classList.remove('hidden');
-      setTimeout(() => drawer.classList.add('visible'), 10);
-    } else {
-      this.closeMenu();
-    }
+    const q = this.quotes[symbol] || {};
+    const changeClass = this.getChangeClass(q.changePercent);
+    const arrow = q.changePercent > 0 ? Icons.trendingUp : 
+                  q.changePercent < 0 ? Icons.trendingDown : '';
+    
+    document.getElementById('detail-title').textContent = this.formatSymbol(symbol);
+    
+    document.getElementById('detail-content').innerHTML = `
+      <div class="detail-header">
+        <div class="detail-symbol">${this.formatSymbol(symbol)}</div>
+        <div class="detail-name">${item.name}</div>
+      </div>
+      
+      <div class="detail-price-block ${changeClass}">
+        <div class="detail-price">${q.price ? formatNumber(q.price) : '—'}</div>
+        <div class="detail-change ${changeClass}">
+          ${arrow}
+          ${q.change !== undefined ? formatNumber(q.change) : ''} 
+          (${q.changePercent !== undefined ? formatPercent(q.changePercent) : '—'})
+        </div>
+      </div>
+      
+      <div class="detail-grid">
+        <div class="detail-cell">
+          <div class="detail-label">Day High</div>
+          <div class="detail-value">${formatNumber(q.dayHigh)}</div>
+        </div>
+        <div class="detail-cell">
+          <div class="detail-label">Day Low</div>
+          <div class="detail-value">${formatNumber(q.dayLow)}</div>
+        </div>
+        <div class="detail-cell">
+          <div class="detail-label">52W High</div>
+          <div class="detail-value">${formatNumber(q.fiftyTwoWeekHigh)}</div>
+        </div>
+        <div class="detail-cell">
+          <div class="detail-label">52W Low</div>
+          <div class="detail-value">${formatNumber(q.fiftyTwoWeekLow)}</div>
+        </div>
+        <div class="detail-cell">
+          <div class="detail-label">Volume</div>
+          <div class="detail-value">${formatVolume(q.volume)}</div>
+        </div>
+        <div class="detail-cell">
+          <div class="detail-label">Prev Close</div>
+          <div class="detail-value">${formatNumber(q.previousClose)}</div>
+        </div>
+      </div>
+    `;
+    
+    this.showView('detail');
   },
 
   /**
-   * Close menu
+   * Reset to defaults
    */
-  closeMenu() {
-    const drawer = document.getElementById('menu-drawer');
-    const overlay = document.getElementById('menu-overlay');
+  async resetToDefaults() {
+    const confirmed = await this.showConfirm('Reset to default indices?');
+    if (!confirmed) return;
     
-    drawer.classList.remove('visible');
-    setTimeout(() => {
-      drawer.classList.add('hidden');
-      overlay.classList.add('hidden');
-    }, 200);
+    this.watchlist = [...DEFAULT_INDICES];
+    this.quotes = {};
+    await this.saveWatchlist();
+    await this.refreshData();
+    this.showView('home');
   },
 
   /**
-   * Handle menu action
+   * Show confirm dialog
    */
-  async handleMenuAction(action) {
-    this.closeMenu();
-    
-    switch (action) {
-      case 'indices':
-        this.filter = 'indices';
-        document.getElementById('page-title').textContent = 'Indices';
-        this.currentIndex = 0;
-        this.renderList();
-        break;
-        
-      case 'stocks':
-        this.filter = 'stocks';
-        document.getElementById('page-title').textContent = 'Stocks';
-        this.currentIndex = 0;
-        this.renderList();
-        break;
-        
-      case 'all':
-        this.filter = 'all';
-        document.getElementById('page-title').textContent = 'My Stocks';
-        this.currentIndex = 0;
-        this.renderList();
-        break;
-        
-      case 'clear':
-        const confirmed = await Views.showConfirm('Reset to defaults?');
-        if (confirmed) {
-          this.watchlist = [...DEFAULT_INDICES];
-          this.quotes = {};
-          this.currentIndex = 0;
-          await this.saveWatchlist();
-          StockAPI.clearCache();
-          await this.refreshData();
-        }
-        break;
-    }
+  showConfirm(message) {
+    return new Promise(resolve => {
+      const dialog = document.getElementById('confirm-dialog');
+      document.getElementById('confirm-message').textContent = message;
+      dialog.classList.remove('hidden');
+      
+      const yes = document.getElementById('confirm-yes');
+      const no = document.getElementById('confirm-no');
+      
+      const cleanup = (result) => {
+        dialog.classList.add('hidden');
+        yes.onclick = null;
+        no.onclick = null;
+        resolve(result);
+      };
+      
+      yes.onclick = () => cleanup(true);
+      no.onclick = () => cleanup(false);
+    });
+  },
+
+  /**
+   * Show/hide loading
+   */
+  showLoading(show) {
+    document.getElementById('loading').classList.toggle('hidden', !show);
+  },
+
+  /**
+   * Helpers
+   */
+  formatSymbol(symbol) {
+    return symbol.startsWith('^') ? symbol.substring(1) : symbol;
+  },
+  
+  getChangeClass(change) {
+    if (change > 0) return 'positive';
+    if (change < 0) return 'negative';
+    return 'neutral';
   }
 };
 
-// Initialize
+// Start
 document.addEventListener('DOMContentLoaded', () => App.init());
