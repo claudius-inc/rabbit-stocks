@@ -10,54 +10,58 @@ export default async function handler(req, res) {
   }
 
   try {
-    const symbolList = symbols.split(',');
-    const results = [];
+    // Step 1: Get cookies from Yahoo
+    const cookieResponse = await fetch('https://fc.yahoo.com', {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    });
+    const cookies = cookieResponse.headers.get('set-cookie') || '';
     
-    // Fetch each symbol using chart endpoint
-    for (const symbol of symbolList) {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol.trim())}?interval=1d&range=1d`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        const result = data.chart?.result?.[0];
-        
-        if (result) {
-          const meta = result.meta || {};
-          const quote = result.indicators?.quote?.[0] || {};
-          
-          const price = meta.regularMarketPrice;
-          const prevClose = meta.chartPreviousClose || meta.previousClose;
-          const change = price && prevClose ? price - prevClose : 0;
-          const changePercent = prevClose ? (change / prevClose) * 100 : 0;
-          
-          results.push({
-            symbol: meta.symbol || symbol,
-            shortName: meta.shortName || meta.longName || symbol,
-            longName: meta.longName || meta.shortName || symbol,
-            regularMarketPrice: price,
-            regularMarketChange: change,
-            regularMarketChangePercent: changePercent,
-            regularMarketDayHigh: meta.regularMarketDayHigh || quote.high?.[0],
-            regularMarketDayLow: meta.regularMarketDayLow || quote.low?.[0],
-            regularMarketPreviousClose: prevClose,
-            regularMarketOpen: quote.open?.[0],
-            regularMarketVolume: meta.regularMarketVolume,
-            marketCap: null,
-            trailingPE: null,
-            priceToBook: null,
-            returnOnEquity: null,
-            fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh,
-            fiftyTwoWeekLow: meta.fiftyTwoWeekLow
-          });
-        }
+    // Step 2: Get crumb
+    const crumbResponse = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Cookie': cookies
       }
+    });
+    const crumb = await crumbResponse.text();
+    
+    // Step 3: Fetch quotes with crumb
+    const url = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols)}&crumb=${encodeURIComponent(crumb)}`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Cookie': cookies
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Yahoo API error: ${response.status}`);
     }
+    
+    const data = await response.json();
+    const quotes = data.quoteResponse?.result || [];
+    
+    // Map to our format
+    const results = quotes.map(q => ({
+      symbol: q.symbol,
+      shortName: q.shortName || q.longName || q.symbol,
+      longName: q.longName || q.shortName || q.symbol,
+      regularMarketPrice: q.regularMarketPrice,
+      regularMarketChange: q.regularMarketChange,
+      regularMarketChangePercent: q.regularMarketChangePercent,
+      regularMarketDayHigh: q.regularMarketDayHigh,
+      regularMarketDayLow: q.regularMarketDayLow,
+      regularMarketPreviousClose: q.regularMarketPreviousClose,
+      regularMarketOpen: q.regularMarketOpen,
+      regularMarketVolume: q.regularMarketVolume,
+      marketCap: q.marketCap,
+      trailingPE: q.trailingPE,
+      priceToBook: q.priceToBook,
+      returnOnEquity: q.returnOnEquity, // May not always be available
+      fiftyTwoWeekHigh: q.fiftyTwoWeekHigh,
+      fiftyTwoWeekLow: q.fiftyTwoWeekLow
+    }));
     
     res.status(200).json({ quoteResponse: { result: results } });
   } catch (error) {
