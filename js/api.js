@@ -44,10 +44,11 @@ const StockAPI = {
           volume: q.regularMarketVolume,
           marketCap: q.marketCap,
           peRatio: q.trailingPE,
+          priceToBook: q.priceToBook,
+          roic: q.returnOnEquity, // Use ROE as proxy
           fiftyTwoWeekHigh: q.fiftyTwoWeekHigh,
           fiftyTwoWeekLow: q.fiftyTwoWeekLow,
           ytdReturn: q.ytdReturn,
-          roic: null,
           dividendDate: q.dividendDate ? new Date(q.dividendDate * 1000).toISOString().split('T')[0] : null
         };
         

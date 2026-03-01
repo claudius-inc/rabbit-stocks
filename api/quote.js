@@ -50,6 +50,8 @@ export default async function handler(req, res) {
             regularMarketVolume: meta.regularMarketVolume,
             marketCap: null,
             trailingPE: null,
+            priceToBook: null,
+            returnOnEquity: null,
             fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh,
             fiftyTwoWeekLow: meta.fiftyTwoWeekLow
           });

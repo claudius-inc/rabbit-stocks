@@ -462,33 +462,40 @@ const App = {
     document.getElementById('detail-title').textContent = this.formatSymbol(symbol);
     
     document.getElementById('detail-content').innerHTML = `
-      <div class="detail-header">
-        <div class="detail-symbol">${this.formatSymbol(symbol)}</div>
-        <div class="detail-name">${item.name}</div>
+      <div class="detail-header ${changeClass}">
+        <div class="detail-left">
+          <div class="detail-symbol">${this.formatSymbol(symbol)}</div>
+          <div class="detail-name">${item.name}</div>
+        </div>
+        <div class="detail-right">
+          <div class="detail-price">${q.price ? formatNumber(q.price) : '—'}</div>
+          <div class="detail-change ${changeClass}">
+            ${arrow}
+            ${q.changePercent !== undefined ? formatPercent(q.changePercent) : '—'}
+          </div>
+        </div>
       </div>
       
-      <div class="detail-price-block ${changeClass}">
-        <div class="detail-price">${q.price ? formatNumber(q.price) : '—'}</div>
-        <div class="detail-change ${changeClass}">
-          ${arrow}
-          ${q.change !== undefined ? formatNumber(q.change) : ''} 
-          (${q.changePercent !== undefined ? formatPercent(q.changePercent) : '—'})
+      <div class="detail-price-row">
+        <div class="detail-price-cell">
+          <div class="label">Open</div>
+          <div class="value">${formatNumber(q.open)}</div>
+        </div>
+        <div class="detail-price-cell">
+          <div class="label">High</div>
+          <div class="value">${formatNumber(q.dayHigh)}</div>
+        </div>
+        <div class="detail-price-cell">
+          <div class="label">Low</div>
+          <div class="value">${formatNumber(q.dayLow)}</div>
+        </div>
+        <div class="detail-price-cell">
+          <div class="label">Close</div>
+          <div class="value">${formatNumber(q.previousClose)}</div>
         </div>
       </div>
       
       <div class="detail-grid">
-        <div class="detail-cell">
-          <div class="detail-label">Day High</div>
-          <div class="detail-value">${formatNumber(q.dayHigh)}</div>
-        </div>
-        <div class="detail-cell">
-          <div class="detail-label">Day Low</div>
-          <div class="detail-value">${formatNumber(q.dayLow)}</div>
-        </div>
-        <div class="detail-cell">
-          <div class="detail-label">52W High</div>
-          <div class="detail-value">${formatNumber(q.fiftyTwoWeekHigh)}</div>
-        </div>
         <div class="detail-cell">
           <div class="detail-label">52W Low</div>
           <div class="detail-value">${formatNumber(q.fiftyTwoWeekLow)}</div>
@@ -498,8 +505,20 @@ const App = {
           <div class="detail-value">${formatVolume(q.volume)}</div>
         </div>
         <div class="detail-cell">
-          <div class="detail-label">Prev Close</div>
-          <div class="detail-value">${formatNumber(q.previousClose)}</div>
+          <div class="detail-label">Mkt Cap</div>
+          <div class="detail-value">${formatMarketCap(q.marketCap)}</div>
+        </div>
+        <div class="detail-cell">
+          <div class="detail-label">P/E</div>
+          <div class="detail-value">${q.peRatio ? formatNumber(q.peRatio, 1) : '—'}</div>
+        </div>
+        <div class="detail-cell">
+          <div class="detail-label">P/B</div>
+          <div class="detail-value">${q.priceToBook ? formatNumber(q.priceToBook, 1) : '—'}</div>
+        </div>
+        <div class="detail-cell">
+          <div class="detail-label">ROIC</div>
+          <div class="detail-value">${q.roic ? formatPercent(q.roic) : '—'}</div>
         </div>
       </div>
     `;

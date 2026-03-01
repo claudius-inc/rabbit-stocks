@@ -94,7 +94,7 @@ main {
 
 .ticker-track {
   display: flex;
-  animation: ticker-scroll 25s linear infinite;
+  animation: ticker-scroll 15s linear infinite;
   white-space: nowrap;
   height: 100%;
   align-items: center;
@@ -216,8 +216,8 @@ main {
 
 /* ----- Bottom Navigation ----- */
 #bottom-nav {
-  height: 50px;
-  min-height: 50px;
+  height: 40px;
+  min-height: 40px;
   display: flex;
   background: #fff;
   border-top: 1px solid #e0e0e0;
@@ -229,12 +229,12 @@ main {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 1px;
   background: none;
   border: none;
   cursor: pointer;
   color: #888;
-  padding: 4px 0;
+  padding: 2px 0;
 }
 
 .nav-btn:active {
@@ -410,78 +410,121 @@ main {
 #detail-content {
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  padding: 8px;
 }
 
 .detail-header {
-  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 8px 10px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.detail-header.positive {
+  background: #dcfce7;
+}
+
+.detail-header.negative {
+  background: #fee2e2;
+}
+
+.detail-left {
+  display: flex;
+  flex-direction: column;
 }
 
 .detail-symbol {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 800;
 }
 
 .detail-name {
-  font-size: 11px;
+  font-size: 10px;
   color: #666;
-  margin-top: 2px;
+  max-width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.detail-price-block {
-  text-align: center;
-  padding: 14px;
-  background: #f5f5f5;
-  border-radius: 10px;
-  margin-bottom: 12px;
-}
-
-.detail-price-block.positive {
-  background: #dcfce7;
-}
-
-.detail-price-block.negative {
-  background: #fee2e2;
+.detail-right {
+  text-align: right;
 }
 
 .detail-price {
-  font-size: 28px;
+  font-size: 18px;
   font-weight: 700;
 }
 
 .detail-change {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
-  margin-top: 4px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+/* Price row: Open, High, Low, Close */
+.detail-price-row {
+  display: flex;
+  background: #f8f8f8;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.detail-price-cell {
+  flex: 1;
+  text-align: center;
+  padding: 6px 2px;
+  border-right: 1px solid #eee;
+}
+
+.detail-price-cell:last-child {
+  border-right: none;
+}
+
+.detail-price-cell .label {
+  font-size: 8px;
+  color: #888;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.detail-price-cell .value {
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 1px;
 }
 
 .detail-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
 }
 
 .detail-cell {
   background: #f8f8f8;
   border-radius: 6px;
-  padding: 8px;
+  padding: 6px;
+  text-align: center;
 }
 
 .detail-label {
-  font-size: 9px;
+  font-size: 8px;
   color: #888;
   text-transform: uppercase;
   font-weight: 600;
 }
 
 .detail-value {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 /* ----- Settings View ----- */
