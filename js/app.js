@@ -139,7 +139,6 @@ const App = {
     // Back buttons
     document.getElementById('add-back-btn').addEventListener('click', () => this.showView('home'));
     document.getElementById('detail-back-btn').addEventListener('click', () => this.showView('home'));
-    document.getElementById('settings-back-btn').addEventListener('click', () => this.showView('home'));
 
     // Search
     document.getElementById('search-btn').addEventListener('click', () => this.handleSearch());
@@ -182,9 +181,6 @@ const App = {
         this.showDetail(item.dataset.symbol);
       }
     });
-
-    // Settings
-    document.getElementById('reset-btn').addEventListener('click', () => this.resetToDefaults());
 
     // Visibility change - start/stop auto-refresh
     document.addEventListener('visibilitychange', () => {
