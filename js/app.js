@@ -315,14 +315,37 @@ const App = {
    * Render indices ticker
    */
   renderTicker(indices) {
+    const staticContainer = document.getElementById('ticker-static');
     const track = document.getElementById('ticker-track');
     
-    if (indices.length === 0) {
-      track.innerHTML = '<span class="ticker-item"><span class="ticker-symbol">No indices</span></span>';
+    // Find STI for static display
+    const sti = indices.find(i => i.symbol === '^STI');
+    const otherIndices = indices.filter(i => i.symbol !== '^STI');
+    
+    // Render static STI
+    if (sti) {
+      const q = this.quotes[sti.symbol] || {};
+      const changeClass = this.getChangeClass(q.changePercent);
+      staticContainer.innerHTML = `
+        <div class="ticker-item static" data-symbol="${sti.symbol}">
+          <span class="ticker-symbol">STI</span>
+          <span class="ticker-price">${q.price ? formatNumber(q.price, 0) : '...'}</span>
+          <span class="ticker-change ${changeClass}">
+            ${q.changePercent !== undefined ? (q.changePercent >= 0 ? '+' : '') + q.changePercent.toFixed(1) + '%' : ''}
+          </span>
+        </div>
+      `;
+    } else {
+      staticContainer.innerHTML = '';
+    }
+    
+    // Render scrolling indices
+    if (otherIndices.length === 0) {
+      track.innerHTML = '';
       return;
     }
     
-    const items = indices.map(item => {
+    const items = otherIndices.map(item => {
       const q = this.quotes[item.symbol] || {};
       const changeClass = this.getChangeClass(q.changePercent);
       const arrow = q.changePercent > 0 ? Icons.trendingUp : 

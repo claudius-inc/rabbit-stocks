@@ -89,13 +89,27 @@ main {
   height: 36px;
   min-height: 36px;
   background: #1a1a1a;
+  display: flex;
+  overflow: hidden;
+}
+
+.ticker-static {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border-right: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.ticker-scroll {
+  flex: 1;
   overflow: hidden;
   position: relative;
 }
 
 .ticker-track {
   display: flex;
-  animation: ticker-scroll 7s linear infinite;
+  animation: ticker-scroll 10s linear infinite;
   white-space: nowrap;
   height: 100%;
   align-items: center;
@@ -109,11 +123,17 @@ main {
 .ticker-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 16px;
-  font-size: 16px;
+  gap: 5px;
+  padding: 0 12px;
+  font-size: 14px;
   color: #fff;
   cursor: pointer;
+}
+
+.ticker-item.static {
+  padding: 0;
+  gap: 4px;
+  font-size: 13px;
 }
 
 .ticker-symbol {
