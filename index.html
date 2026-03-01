@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=240, height=282, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Stocks</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header id="header">
+      <h1 id="page-title">My Stocks</h1>
+      <button id="menu-btn" aria-label="Menu">☰</button>
+    </header>
+
+    <!-- Main Content Area -->
+    <main id="content">
+      <!-- List View (default) -->
+      <div id="list-view" class="view active">
+        <div id="stock-list"></div>
+      </div>
+
+      <!-- Detail View -->
+      <div id="detail-view" class="view">
+        <button id="back-btn" class="back-btn">← Back</button>
+        <div id="detail-content"></div>
+      </div>
+
+      <!-- Add View -->
+      <div id="add-view" class="view">
+        <button id="add-back-btn" class="back-btn">← Back</button>
+        <div class="add-container">
+          <input type="text" id="search-input" placeholder="Enter ticker or name..." autocomplete="off">
+          <button id="search-btn" class="primary-btn">Search</button>
+          <div id="search-results"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom Action Bar -->
+    <footer id="action-bar">
+      <button id="refresh-btn" class="action-btn">🔄 Refresh</button>
+      <button id="add-btn" class="action-btn">+ Add</button>
+    </footer>
+
+    <!-- Menu Drawer -->
+    <div id="menu-overlay" class="hidden"></div>
+    <nav id="menu-drawer" class="hidden">
+      <div class="menu-header">Menu</div>
+      <button class="menu-item" data-action="indices">📊 Indices</button>
+      <button class="menu-item" data-action="stocks">📈 Stocks</button>
+      <button class="menu-item" data-action="all">📋 All</button>
+      <hr>
+      <button class="menu-item danger" data-action="clear">🗑️ Clear All</button>
+    </nav>
+
+    <!-- Loading Overlay -->
+    <div id="loading" class="hidden">
+      <div class="spinner"></div>
+      <p>Loading...</p>
+    </div>
+
+    <!-- Confirm Dialog -->
+    <div id="confirm-dialog" class="hidden">
+      <div class="dialog-box">
+        <p id="confirm-message">Are you sure?</p>
+        <div class="dialog-buttons">
+          <button id="confirm-yes" class="primary-btn">Yes</button>
+          <button id="confirm-no" class="secondary-btn">No</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/views.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
