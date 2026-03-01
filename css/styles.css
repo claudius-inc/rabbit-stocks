@@ -273,15 +273,18 @@ main {
 
 .search-box {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   margin-bottom: 8px;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 #search-input {
   flex: 1;
+  min-width: 0;
   height: 40px;
   font-size: 18px;
-  padding: 0 10px;
+  padding: 0 8px;
   border: 1px solid #ddd;
   border-radius: 6px;
   background: #fff;
@@ -293,7 +296,8 @@ main {
 }
 
 .search-icon {
-  width: 44px;
+  width: 40px;
+  min-width: 40px;
   height: 40px;
   background: #007AFF;
   border-radius: 6px;
