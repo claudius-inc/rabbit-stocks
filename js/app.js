@@ -211,7 +211,7 @@ const App = {
     this.refreshInterval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         console.log('Auto-refreshing...');
-        this.refreshData();
+        this.refreshData(true); // silent refresh
       }
     }, this.REFRESH_MS);
   },
@@ -280,9 +280,12 @@ const App = {
 
   /**
    * Refresh data
+   * @param {boolean} silent - If true, no loading overlay (for auto-refresh)
    */
-  async refreshData() {
-    this.showLoading(true);
+  async refreshData(silent = false) {
+    if (!silent) {
+      this.showLoading(true);
+    }
     
     try {
       const symbols = this.watchlist.map(i => i.symbol);
@@ -294,7 +297,9 @@ const App = {
       console.error('Refresh failed:', e);
     }
     
-    this.showLoading(false);
+    if (!silent) {
+      this.showLoading(false);
+    }
   },
 
   /**

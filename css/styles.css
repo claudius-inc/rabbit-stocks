@@ -143,6 +143,7 @@ main {
 
 .ticker-price {
   color: #ccc;
+  transition: opacity 0.3s ease;
 }
 
 .ticker-change {
@@ -220,6 +221,7 @@ main {
 .stock-price {
   font-size: 20px;
   font-weight: 600;
+  transition: opacity 0.3s ease;
 }
 
 .stock-change {
