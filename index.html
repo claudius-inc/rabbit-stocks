@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=240, height=282, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Stocks</title>
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/layouts.css">
 </head>
 <body>
   <div id="app">
@@ -51,8 +52,29 @@
       <button class="menu-item" data-action="indices">📊 Indices</button>
       <button class="menu-item" data-action="stocks">📈 Stocks</button>
       <button class="menu-item" data-action="all">📋 All</button>
+      
+      <!-- Layout Options -->
+      <div class="layout-menu">
+        <div class="layout-menu-label">Layout</div>
+        <button class="layout-option active" data-layout="compact">
+          <span class="layout-icon">☰</span> Compact
+        </button>
+        <button class="layout-option" data-layout="cards">
+          <span class="layout-icon">🃏</span> Cards
+        </button>
+        <button class="layout-option" data-layout="ticker">
+          <span class="layout-icon">📺</span> Ticker
+        </button>
+        <button class="layout-option" data-layout="dashboard">
+          <span class="layout-icon">▦</span> Dashboard
+        </button>
+        <button class="layout-option" data-layout="focus">
+          <span class="layout-icon">🔍</span> Focus
+        </button>
+      </div>
+      
       <hr>
-      <button class="menu-item danger" data-action="clear">🗑️ Clear All</button>
+      <button class="menu-item danger" data-action="clear">🗑️ Reset</button>
     </nav>
 
     <!-- Loading Overlay -->
@@ -75,6 +97,7 @@
 
   <script src="js/data.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/layouts.js"></script>
   <script src="js/views.js"></script>
   <script src="js/app.js"></script>
 </body>

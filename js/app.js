@@ -5,9 +5,10 @@
 const App = {
   watchlist: [],
   quotes: {},
-  filter: 'all', // 'all', 'indices', 'stocks'
+  filter: 'all',
+  layout: 'compact', // compact, cards, ticker, dashboard, focus
   selectedItem: null,
-  selectedIndex: 0, // For scroll wheel navigation
+  currentIndex: 0, // For card/focus navigation
 
   /**
    * Initialize the app
@@ -15,19 +16,12 @@ const App = {
   async init() {
     console.log('Initializing Stocks app...');
     
-    // Load saved watchlist or use defaults
     await this.loadWatchlist();
-    
-    // Set up event listeners
+    await this.loadLayout();
     this.setupEventListeners();
-    
-    // Set up R1 hardware events
     this.setupHardwareEvents();
-    
-    // Set up wake event
     this.setupWakeEvent();
     
-    // Initial render and data fetch
     this.renderList();
     await this.refreshData();
     
@@ -49,8 +43,6 @@ const App = {
     } catch (e) {
       console.log('No saved watchlist, using defaults');
     }
-    
-    // Use defaults if nothing saved
     this.watchlist = [...DEFAULT_INDICES];
     await this.saveWatchlist();
   },
@@ -72,10 +64,36 @@ const App = {
   },
 
   /**
+   * Load layout preference
+   */
+  async loadLayout() {
+    try {
+      if (typeof window.creationStorage !== 'undefined') {
+        const layout = await window.creationStorage.plain.getItem('stocks_layout');
+        if (layout) {
+          this.layout = atob(layout);
+          this.updateLayoutMenu();
+        }
+      }
+    } catch (e) {}
+  },
+
+  /**
+   * Save layout preference
+   */
+  async saveLayout() {
+    try {
+      if (typeof window.creationStorage !== 'undefined') {
+        await window.creationStorage.plain.setItem('stocks_layout', btoa(this.layout));
+      }
+    } catch (e) {}
+  },
+
+  /**
    * Set up DOM event listeners
    */
   setupEventListeners() {
-    // Menu button
+    // Menu
     document.getElementById('menu-btn').addEventListener('click', () => this.toggleMenu());
     document.getElementById('menu-overlay').addEventListener('click', () => this.closeMenu());
 
@@ -84,7 +102,12 @@ const App = {
       item.addEventListener('click', () => this.handleMenuAction(item.dataset.action));
     });
 
-    // Action bar buttons
+    // Layout options
+    document.querySelectorAll('.layout-option').forEach(btn => {
+      btn.addEventListener('click', () => this.setLayout(btn.dataset.layout));
+    });
+
+    // Action bar
     document.getElementById('refresh-btn').addEventListener('click', () => this.refreshData());
     document.getElementById('add-btn').addEventListener('click', () => this.showAddView());
 
@@ -92,15 +115,38 @@ const App = {
     document.getElementById('back-btn').addEventListener('click', () => this.showListView());
     document.getElementById('add-back-btn').addEventListener('click', () => this.showListView());
 
-    // Stock list click
+    // Stock list clicks (delegated)
     document.getElementById('stock-list').addEventListener('click', (e) => {
-      const item = e.target.closest('.stock-item');
+      // Card navigation
+      const navBtn = e.target.closest('.card-nav-btn');
+      if (navBtn && !navBtn.disabled) {
+        const dir = parseInt(navBtn.dataset.dir);
+        this.navigateCards(dir);
+        return;
+      }
+      
+      // Mover item click
+      const mover = e.target.closest('.mover-item');
+      if (mover) {
+        this.showDetail(mover.dataset.symbol);
+        return;
+      }
+      
+      // Tile click
+      const tile = e.target.closest('.dash-tile');
+      if (tile) {
+        this.showDetail(tile.dataset.symbol);
+        return;
+      }
+      
+      // Regular item click
+      const item = e.target.closest('.stock-item, .card-view, .focus-view');
       if (item) {
         this.showDetail(item.dataset.symbol);
       }
     });
 
-    // Detail view delete button
+    // Detail view delete
     document.getElementById('detail-content').addEventListener('click', (e) => {
       if (e.target.classList.contains('delete-btn')) {
         this.removeItem(e.target.dataset.symbol);
@@ -113,7 +159,7 @@ const App = {
       if (e.key === 'Enter') this.handleSearch();
     });
 
-    // Search results click
+    // Search results
     document.getElementById('search-results').addEventListener('click', (e) => {
       const item = e.target.closest('.search-result-item');
       if (item && !item.classList.contains('disabled')) {
@@ -127,26 +173,31 @@ const App = {
   },
 
   /**
-   * Set up R1 hardware events (scroll wheel, side button)
+   * Set up R1 hardware events
    */
   setupHardwareEvents() {
-    // Scroll up - previous item
     window.addEventListener('scrollUp', () => {
-      this.navigateList(-1);
+      if (this.layout === 'cards' || this.layout === 'focus') {
+        this.navigateCards(-1);
+      } else {
+        this.navigateList(-1);
+      }
     });
 
-    // Scroll down - next item
     window.addEventListener('scrollDown', () => {
-      this.navigateList(1);
+      if (this.layout === 'cards' || this.layout === 'focus') {
+        this.navigateCards(1);
+      } else {
+        this.navigateList(1);
+      }
     });
 
-    // Side button click - select/expand current item
     window.addEventListener('sideClick', () => {
       const currentView = document.querySelector('.view.active').id;
       if (currentView === 'list-view') {
-        const items = document.querySelectorAll('.stock-item');
-        if (items[this.selectedIndex]) {
-          this.showDetail(items[this.selectedIndex].dataset.symbol);
+        const items = this.getFilteredItems();
+        if (items[this.currentIndex]) {
+          this.showDetail(items[this.currentIndex].symbol);
         }
       } else if (currentView === 'detail-view') {
         this.showListView();
@@ -155,41 +206,47 @@ const App = {
   },
 
   /**
-   * Set up wake event for auto-refresh
+   * Set up wake event
    */
   setupWakeEvent() {
-    // R1 visibility change (wake from sleep)
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        console.log('Device woke up, refreshing data...');
         this.refreshData();
       }
     });
   },
 
   /**
-   * Navigate list with scroll wheel
+   * Navigate list (compact layout)
    */
   navigateList(direction) {
-    const items = document.querySelectorAll('.stock-item');
+    const items = document.querySelectorAll('.stock-item.compact');
     if (items.length === 0) return;
 
-    // Remove previous selection
     items.forEach(i => i.classList.remove('selected'));
+    
+    this.currentIndex += direction;
+    if (this.currentIndex < 0) this.currentIndex = 0;
+    if (this.currentIndex >= items.length) this.currentIndex = items.length - 1;
 
-    // Update index
-    this.selectedIndex += direction;
-    if (this.selectedIndex < 0) this.selectedIndex = 0;
-    if (this.selectedIndex >= items.length) this.selectedIndex = items.length - 1;
-
-    // Select new item
-    const selected = items[this.selectedIndex];
+    const selected = items[this.currentIndex];
     selected.classList.add('selected');
     selected.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   },
 
   /**
-   * Refresh data from API
+   * Navigate cards/focus
+   */
+  navigateCards(direction) {
+    const items = this.getFilteredItems();
+    this.currentIndex += direction;
+    if (this.currentIndex < 0) this.currentIndex = 0;
+    if (this.currentIndex >= items.length) this.currentIndex = items.length - 1;
+    this.renderList();
+  },
+
+  /**
+   * Refresh data
    */
   async refreshData() {
     Views.setLoading(true);
@@ -206,19 +263,75 @@ const App = {
   },
 
   /**
-   * Render list based on current filter
+   * Get filtered items
    */
-  renderList() {
+  getFilteredItems() {
     let items = this.watchlist;
-    
     if (this.filter === 'indices') {
       items = items.filter(i => i.type === 'index');
     } else if (this.filter === 'stocks') {
       items = items.filter(i => i.type === 'stock');
     }
+    return items;
+  },
+
+  /**
+   * Render list with current layout
+   */
+  renderList() {
+    const container = document.getElementById('stock-list');
+    const items = this.getFilteredItems();
     
-    Views.renderList(items, this.quotes);
-    this.selectedIndex = 0;
+    if (items.length === 0) {
+      container.innerHTML = Layouts.renderEmpty();
+      return;
+    }
+
+    // Ensure currentIndex is valid
+    if (this.currentIndex >= items.length) {
+      this.currentIndex = items.length - 1;
+    }
+
+    switch (this.layout) {
+      case 'compact':
+        container.innerHTML = Layouts.renderCompact(items, this.quotes);
+        break;
+      case 'cards':
+        container.innerHTML = Layouts.renderCards(items, this.quotes, this.currentIndex);
+        break;
+      case 'ticker':
+        container.innerHTML = Layouts.renderTicker(items, this.quotes);
+        break;
+      case 'dashboard':
+        container.innerHTML = Layouts.renderDashboard(items, this.quotes);
+        break;
+      case 'focus':
+        container.innerHTML = Layouts.renderFocus(items, this.quotes, this.currentIndex);
+        break;
+      default:
+        container.innerHTML = Layouts.renderCompact(items, this.quotes);
+    }
+  },
+
+  /**
+   * Set layout
+   */
+  setLayout(layout) {
+    this.layout = layout;
+    this.currentIndex = 0;
+    this.updateLayoutMenu();
+    this.renderList();
+    this.saveLayout();
+    this.closeMenu();
+  },
+
+  /**
+   * Update layout menu active state
+   */
+  updateLayoutMenu() {
+    document.querySelectorAll('.layout-option').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.layout === this.layout);
+    });
   },
 
   /**
@@ -230,16 +343,14 @@ const App = {
   },
 
   /**
-   * Show detail view for a symbol
+   * Show detail view
    */
   showDetail(symbol) {
     const item = this.watchlist.find(i => i.symbol === symbol);
     if (!item) return;
 
     this.selectedItem = item;
-    const quote = this.quotes[symbol];
-    
-    Views.renderDetail(item, quote);
+    Views.renderDetail(item, this.quotes[symbol]);
     Views.showView('detail-view', item.name);
   },
 
@@ -264,8 +375,8 @@ const App = {
     
     try {
       const results = await StockAPI.search(query);
-      const existingSymbols = this.watchlist.map(i => i.symbol);
-      Views.renderSearchResults(results, existingSymbols);
+      const existing = this.watchlist.map(i => i.symbol);
+      Views.renderSearchResults(results, existing);
     } catch (e) {
       console.error('Search failed:', e);
     }
@@ -274,34 +385,27 @@ const App = {
   },
 
   /**
-   * Add item to watchlist
+   * Add item
    */
   async addItem(item) {
-    // Check if already exists
-    if (this.watchlist.find(i => i.symbol === item.symbol)) {
-      return;
-    }
+    if (this.watchlist.find(i => i.symbol === item.symbol)) return;
 
     this.watchlist.push(item);
     await this.saveWatchlist();
     
-    // Fetch data for new item
     Views.setLoading(true);
     const quote = await StockAPI.fetchQuote(item.symbol);
-    if (quote) {
-      this.quotes[item.symbol] = quote;
-    }
+    if (quote) this.quotes[item.symbol] = quote;
     Views.setLoading(false);
     
-    // Go back to list
     this.showListView();
   },
 
   /**
-   * Remove item from watchlist
+   * Remove item
    */
   async removeItem(symbol) {
-    const confirmed = await Views.showConfirm('Remove this from your list?');
+    const confirmed = await Views.showConfirm('Remove from list?');
     if (!confirmed) return;
 
     this.watchlist = this.watchlist.filter(i => i.symbol !== symbol);
@@ -312,7 +416,7 @@ const App = {
   },
 
   /**
-   * Toggle menu drawer
+   * Toggle menu
    */
   toggleMenu() {
     const drawer = document.getElementById('menu-drawer');
@@ -328,7 +432,7 @@ const App = {
   },
 
   /**
-   * Close menu drawer
+   * Close menu
    */
   closeMenu() {
     const drawer = document.getElementById('menu-drawer');
@@ -351,26 +455,30 @@ const App = {
       case 'indices':
         this.filter = 'indices';
         document.getElementById('page-title').textContent = 'Indices';
+        this.currentIndex = 0;
         this.renderList();
         break;
         
       case 'stocks':
         this.filter = 'stocks';
         document.getElementById('page-title').textContent = 'Stocks';
+        this.currentIndex = 0;
         this.renderList();
         break;
         
       case 'all':
         this.filter = 'all';
         document.getElementById('page-title').textContent = 'My Stocks';
+        this.currentIndex = 0;
         this.renderList();
         break;
         
       case 'clear':
-        const confirmed = await Views.showConfirm('Remove all items and reset to defaults?');
+        const confirmed = await Views.showConfirm('Reset to defaults?');
         if (confirmed) {
           this.watchlist = [...DEFAULT_INDICES];
           this.quotes = {};
+          this.currentIndex = 0;
           await this.saveWatchlist();
           StockAPI.clearCache();
           await this.refreshData();
@@ -380,7 +488,5 @@ const App = {
   }
 };
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  App.init();
-});
+// Initialize
+document.addEventListener('DOMContentLoaded', () => App.init());
