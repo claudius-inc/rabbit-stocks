@@ -476,6 +476,50 @@ main {
   gap: 2px;
 }
 
+/* Pin button */
+.pin-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 6px;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+  cursor: pointer;
+}
+
+.pin-btn:active {
+  background: #e0e0e0;
+}
+
+.pin-btn.pinned {
+  background: #fff3cd;
+  border-color: #ffc107;
+  color: #856404;
+}
+
+.pin-btn svg {
+  flex-shrink: 0;
+}
+
+/* Pinned stock indicator */
+.stock-item.pinned {
+  border-color: #ffc107;
+  background: #fffbeb;
+}
+
+.stock-symbol svg {
+  margin-right: 4px;
+  color: #ffc107;
+  vertical-align: middle;
+}
+
 /* Price row: Open, High, Low, Close */
 .detail-price-row {
   display: flex;

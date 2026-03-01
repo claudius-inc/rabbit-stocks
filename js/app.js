@@ -182,6 +182,14 @@ const App = {
       }
     });
 
+    // Pin button (delegated on detail-content)
+    document.getElementById('detail-content').addEventListener('click', (e) => {
+      const pinBtn = e.target.closest('.pin-btn');
+      if (pinBtn) {
+        this.togglePin(pinBtn.dataset.symbol);
+      }
+    });
+
     // Visibility change - start/stop auto-refresh
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
@@ -353,16 +361,24 @@ const App = {
       return;
     }
     
-    container.innerHTML = stocks.map(item => {
+    // Sort: pinned first, then by original order
+    const sorted = [...stocks].sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return 0;
+    });
+    
+    container.innerHTML = sorted.map(item => {
       const q = this.quotes[item.symbol] || {};
       const changeClass = this.getChangeClass(q.changePercent);
       const arrow = q.changePercent > 0 ? Icons.trendingUp : 
                     q.changePercent < 0 ? Icons.trendingDown : '';
+      const pinIcon = item.pinned ? Icons.pinFilled : '';
       
       return `
-        <div class="stock-item" data-symbol="${item.symbol}">
+        <div class="stock-item ${item.pinned ? 'pinned' : ''}" data-symbol="${item.symbol}">
           <div class="stock-left">
-            <span class="stock-symbol">${this.formatSymbol(item.symbol)}</span>
+            <span class="stock-symbol">${pinIcon}${this.formatSymbol(item.symbol)}</span>
             <span class="stock-name">${item.name}</span>
           </div>
           <div class="stock-right">
@@ -375,6 +391,18 @@ const App = {
         </div>
       `;
     }).join('');
+  },
+  
+  /**
+   * Toggle pin status for a stock
+   */
+  async togglePin(symbol) {
+    const item = this.watchlist.find(i => i.symbol === symbol);
+    if (item) {
+      item.pinned = !item.pinned;
+      await this.saveWatchlist();
+      this.renderHome();
+    }
   },
 
   /**
@@ -485,6 +513,7 @@ const App = {
     const changeClass = this.getChangeClass(q.changePercent);
     const arrow = q.changePercent > 0 ? Icons.trendingUp : 
                   q.changePercent < 0 ? Icons.trendingDown : '';
+    const isPinned = item.pinned;
     
     document.getElementById('detail-title').textContent = this.formatSymbol(symbol);
     
@@ -502,6 +531,11 @@ const App = {
           </div>
         </div>
       </div>
+      
+      <button class="pin-btn ${isPinned ? 'pinned' : ''}" data-symbol="${symbol}">
+        ${isPinned ? Icons.pinFilled : Icons.pin}
+        <span>${isPinned ? 'Unpin' : 'Pin to Top'}</span>
+      </button>
       
       <div class="detail-price-row">
         <div class="detail-price-cell">
