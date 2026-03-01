@@ -41,12 +41,10 @@ const App = {
     document.getElementById('nav-icon-home').innerHTML = Icons.home;
     document.getElementById('nav-icon-add').innerHTML = Icons.plus;
     document.getElementById('nav-icon-refresh').innerHTML = Icons.refresh;
-    document.getElementById('nav-icon-settings').innerHTML = Icons.settings;
     
     // Back buttons
     document.getElementById('add-back-btn').innerHTML = Icons.back;
     document.getElementById('detail-back-btn').innerHTML = Icons.back;
-    document.getElementById('settings-back-btn').innerHTML = Icons.back;
     
     // Search button
     document.querySelector('.search-icon').innerHTML = Icons.search;
