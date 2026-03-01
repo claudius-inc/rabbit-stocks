@@ -7,6 +7,7 @@ const App = {
   watchlist: [],
   quotes: {},
   currentView: 'home',
+  isPaused: false,
   
   // Storage keys
   WATCHLIST_KEY: 'r1stocks_watchlist_v2',
@@ -243,32 +244,24 @@ const App = {
   },
 
   handleSideClick() {
-    // Try to lock screen via R1 API
-    this.lockScreen();
+    this.togglePause();
   },
   
   /**
-   * Lock screen and stop fetching
+   * Toggle pause mode - stops/resumes auto-refresh
    */
-  lockScreen() {
-    // Stop auto-refresh before locking
-    this.stopAutoRefresh();
+  togglePause() {
+    this.isPaused = !this.isPaused;
     
-    // Try various R1 lock APIs
-    try {
-      if (window.r1 && window.r1.lock) {
-        window.r1.lock();
-      } else if (window.rabbit && window.rabbit.lockScreen) {
-        window.rabbit.lockScreen();
-      } else if (window.creationStorage && window.creationStorage.lockScreen) {
-        window.creationStorage.lockScreen();
-      } else {
-        // Fallback: dispatch custom event R1 might listen to
-        window.dispatchEvent(new CustomEvent('requestLock'));
-        console.log('Lock requested (no native API found)');
-      }
-    } catch (e) {
-      console.log('Lock screen failed:', e);
+    if (this.isPaused) {
+      this.stopAutoRefresh();
+      document.body.classList.add('paused');
+      console.log('App paused');
+    } else {
+      this.startAutoRefresh();
+      document.body.classList.remove('paused');
+      this.refreshData(true); // Silent refresh on resume
+      console.log('App resumed');
     }
   },
 

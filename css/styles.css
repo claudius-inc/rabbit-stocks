@@ -696,6 +696,26 @@ main {
   border-radius: 2px;
 }
 
+/* ----- Paused State ----- */
+body.paused #app {
+  opacity: 0.5;
+}
+
+body.paused::after {
+  content: 'PAUSED';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(0,0,0,0.7);
+  padding: 8px 16px;
+  border-radius: 8px;
+  z-index: 500;
+}
+
 /* ----- Utility ----- */
 .hidden {
   display: none !important;
