@@ -182,11 +182,10 @@ const App = {
       }
     });
 
-    // Pin button (delegated on detail-content)
-    document.getElementById('detail-content').addEventListener('click', (e) => {
-      const pinBtn = e.target.closest('.pin-btn');
-      if (pinBtn) {
-        this.togglePin(pinBtn.dataset.symbol);
+    // Pin button in header
+    document.getElementById('detail-pin-btn').addEventListener('click', () => {
+      if (this.currentDetailSymbol) {
+        this.togglePin(this.currentDetailSymbol);
       }
     });
 
@@ -401,7 +400,19 @@ const App = {
     if (item) {
       item.pinned = !item.pinned;
       await this.saveWatchlist();
+      this.updatePinButton(item.pinned);
       this.renderHome();
+    }
+  },
+  
+  /**
+   * Update pin button appearance
+   */
+  updatePinButton(isPinned) {
+    const btn = document.getElementById('detail-pin-btn');
+    if (btn) {
+      btn.innerHTML = isPinned ? Icons.pinFilled : Icons.pin;
+      btn.classList.toggle('pinned', isPinned);
     }
   },
 
@@ -509,13 +520,17 @@ const App = {
     const item = this.watchlist.find(i => i.symbol === symbol);
     if (!item) return;
     
+    this.currentDetailSymbol = symbol;
+    
     const q = this.quotes[symbol] || {};
     const changeClass = this.getChangeClass(q.changePercent);
     const arrow = q.changePercent > 0 ? Icons.trendingUp : 
                   q.changePercent < 0 ? Icons.trendingDown : '';
-    const isPinned = item.pinned;
     
     document.getElementById('detail-title').textContent = this.formatSymbol(symbol);
+    
+    // Update pin button in header
+    this.updatePinButton(item.pinned);
     
     document.getElementById('detail-content').innerHTML = `
       <div class="detail-header ${changeClass}">
@@ -531,11 +546,6 @@ const App = {
           </div>
         </div>
       </div>
-      
-      <button class="pin-btn ${isPinned ? 'pinned' : ''}" data-symbol="${symbol}">
-        ${isPinned ? Icons.pinFilled : Icons.pin}
-        <span>${isPinned ? 'Unpin' : 'Pin to Top'}</span>
-      </button>
       
       <div class="detail-price-row">
         <div class="detail-price-cell">

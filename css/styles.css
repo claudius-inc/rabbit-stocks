@@ -476,36 +476,19 @@ main {
   gap: 2px;
 }
 
-/* Pin button */
-.pin-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 6px;
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #666;
-  cursor: pointer;
+/* Pin icon in header */
+.pin-icon {
+  margin-left: auto;
+  color: #888;
 }
 
-.pin-btn:active {
-  background: #e0e0e0;
+.pin-icon.pinned {
+  color: #f59e0b;
 }
 
-.pin-btn.pinned {
-  background: #fff3cd;
-  border-color: #ffc107;
-  color: #856404;
-}
-
-.pin-btn svg {
-  flex-shrink: 0;
+.pin-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* Pinned stock indicator */
