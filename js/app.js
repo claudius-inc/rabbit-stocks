@@ -10,6 +10,10 @@ const App = {
   
   // Storage keys
   WATCHLIST_KEY: 'r1stocks_watchlist_v2',
+  
+  // Auto-refresh
+  refreshInterval: null,
+  REFRESH_MS: 60000, // 1 minute
 
   /**
    * Initialize
@@ -182,12 +186,41 @@ const App = {
     // Settings
     document.getElementById('reset-btn').addEventListener('click', () => this.resetToDefaults());
 
-    // Wake event
+    // Visibility change - start/stop auto-refresh
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         this.refreshData();
+        this.startAutoRefresh();
+      } else {
+        this.stopAutoRefresh();
       }
     });
+    
+    // Start auto-refresh on load
+    this.startAutoRefresh();
+  },
+  
+  /**
+   * Start auto-refresh interval (only when visible)
+   */
+  startAutoRefresh() {
+    this.stopAutoRefresh(); // Clear any existing
+    this.refreshInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        console.log('Auto-refreshing...');
+        this.refreshData();
+      }
+    }, this.REFRESH_MS);
+  },
+  
+  /**
+   * Stop auto-refresh interval
+   */
+  stopAutoRefresh() {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
+    }
   },
 
   /**
